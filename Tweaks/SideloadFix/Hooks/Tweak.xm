@@ -30,6 +30,32 @@ static BOOL isSelfCall(void) {
     return [path hasPrefix:NSBundle.mainBundle.bundlePath];
 }
 
+static NSString *getAccessGroupID(void) {
+    NSDictionary *query = @{
+        (__bridge NSString *)kSecClass : (__bridge NSString *)kSecClassGenericPassword,
+        (__bridge NSString *)kSecAttrAccount : @"bundleSeedID",
+        (__bridge NSString *)kSecAttrService : @"",
+        (__bridge NSString *)kSecReturnAttributes : @YES
+    };
+
+    CFDictionaryRef result = NULL;
+    OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, (CFTypeRef *)&result);
+
+    if (status == errSecItemNotFound) {
+        status = SecItemAdd((__bridge CFDictionaryRef)query, (CFTypeRef *)&result);
+    }
+
+    if (status != errSecSuccess)
+        return nil;
+
+    NSString *accessGroup =
+        [(__bridge NSDictionary *)result objectForKey:(__bridge NSString *)kSecAttrAccessGroup];
+    if (result)
+        CFRelease(result);
+
+    return accessGroup;
+}
+
 %hook UIPasteboard
 - (NSString *)_accessGroup {
     return getAccessGroupID();
